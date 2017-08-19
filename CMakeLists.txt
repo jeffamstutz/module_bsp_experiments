@@ -20,6 +20,10 @@ if (OSPRAY_MODULE_EXP_BSP)
 
   ospray_configure_mpi()
 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
+
+  include_directories(${CMAKE_CURRENT_LIST_DIR})
+
   ospray_create_application(bspCommTest
     bspCommTest.cpp
   LINK

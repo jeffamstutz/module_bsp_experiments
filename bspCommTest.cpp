@@ -24,6 +24,10 @@
 
 #include <iostream>
 
+// Bulk library
+#include "bulk/bulk.hpp"
+#include "bulk/backends/thread/environment.hpp"
+
 int main()
 {
   std::cout << "hello world!" << std::endl;
