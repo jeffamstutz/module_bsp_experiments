@@ -20,6 +20,10 @@ if (OSPRAY_MODULE_EXP_BSP)
 
   ospray_configure_mpi()
 
+  SET(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+  SET(THREADS_PREFER_PTHREAD_FLAG TRUE) # for gcc6
+  FIND_PACKAGE(Threads REQUIRED)
+
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
 
   include_directories(${CMAKE_CURRENT_LIST_DIR})
@@ -28,6 +32,7 @@ if (OSPRAY_MODULE_EXP_BSP)
     bspCommTest.cpp
   LINK
     ${MPI_CXX_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
   )
 
 endif ()
