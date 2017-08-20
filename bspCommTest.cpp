@@ -23,6 +23,7 @@
 // ========================================================================== //
 
 #include <iostream>
+#include <random>
 
 // Bulk library
 #include "bulk/bulk.hpp"
@@ -35,44 +36,55 @@ using environment = bulk::thread::environment;
 using environment = bulk::mpi::environment;
 #endif
 
+// ospcommon
+#include "components/ospcommon/utility/CodeTimer.h"
+
+const int payloadSize = 100000;
+
+struct DummyData
+{
+  ospcommon::byte_t values[payloadSize];
+};
+
 int main()
 {
   environment env;
 
   env.spawn(env.available_processors(), [](bulk::world &world) {
-    int s = world.rank();
-    int p = world.active_processors();
+    int rank     = world.rank();
+    int numRanks = world.active_processors();
 
-    world.log("Hello, world %d/%d", s, p);
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<> randomRank(0, numRanks - 1);
 
-    auto a               = bulk::var<int>(world);
-    a(world.next_rank()) = s;
-    world.sync();
-    // ... the local a is now updated
-    world.log("%d got put %d", s, a.value());
+    auto queue = bulk::queue<DummyData>(world);
 
-    auto b = a(world.next_rank()).get();
-    world.sync();
-    // ... b.value() is now available
+    double t0 = ospcommon::getSysTime();
+    double t1 = ospcommon::getSysTime();
 
-    // coarrays are distributed arrays, each processor has an array to which
-    // other processors can write
-    auto xs                  = bulk::coarray<int>(world, 10);
-    xs(world.next_rank())[3] = s;
+    size_t numReceived = 0;
 
-    // messages can be passed to queues that specify a tag type, and a
-    // content type
-    auto q = bulk::queue<int, float>(world);
-    for (int t = 0; t < p; ++t) {
-      q(t).send(s, 3.1415f);  // send (s, pi) to processor t
-    }
-    world.sync();
+    while (true) {
+      double t2 = ospcommon::getSysTime();
 
-    // Messages are now available in q
-    for (auto[tag, content] : q) {
-      world.log("%d got sent %d, %f", s, tag, content);
+      if (t2 - t1 > 1) {
+        numReceived += queue.size();
+
+        double rate = numReceived * payloadSize / (t2 - t0);
+
+        std::string numBytes = ospcommon::prettyNumber(numReceived*payloadSize);
+        std::string rateString = ospcommon::prettyNumber(rate);
+
+        world.log("rank %i: received %li messages (%sbytes) in %lf secs;"
+                  " that is %sB/s", rank, numReceived, numBytes.c_str(),
+                  t2-t0, rateString.c_str());
+
+        world.sync();
+
+        t1 = ospcommon::getSysTime();
+      } else {
+        queue(randomRank(rng)).send(DummyData());
+      }
     }
   });
-
-  return 0;
 }

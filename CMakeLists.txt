@@ -33,6 +33,7 @@ if (OSPRAY_MODULE_EXP_BSP)
   LINK
     ${MPI_CXX_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ospray_common
   )
 
 endif ()
